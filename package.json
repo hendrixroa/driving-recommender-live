@@ -1,24 +1,37 @@
 {
   "name": "amplify-angular-template",
   "version": "0.0.0",
+  "engines": {
+    "node": ">=18.0.0 <=20.x",
+    "npm": ">=9.0.0"
+  },
   "scripts": {
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "amplify:sandbox": "./scripts/setup-secrets.sh && npx ampx sandbox --once",
+    "amplify:deploy": "NODE_OPTIONS='--no-warnings' npx ampx pipeline-deploy"
   },
   "private": true,
+  "overrides": {
+    "@typescript/vfs": "1.6.0"
+  },
   "dependencies": {
     "@angular/animations": "^17.3.0",
+    "@angular/cdk": "^17.3.0",
     "@angular/common": "^17.3.0",
     "@angular/compiler": "^17.3.0",
     "@angular/core": "^17.3.0",
     "@angular/forms": "^17.3.0",
+    "@angular/material": "^17.3.0",
     "@angular/platform-browser": "^17.3.0",
     "@angular/platform-browser-dynamic": "^17.3.0",
     "@angular/router": "^17.3.0",
     "aws-amplify": "^6.6.6",
+    "maplibre-gl": "^4.0.0",
+    "maplibre-gl-js-amplify": "^1.0.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0",
     "zone.js": "~0.14.3"
@@ -28,8 +41,13 @@
     "@angular/cli": "^17.3.4",
     "@angular/compiler-cli": "^17.3.0",
     "@aws-amplify/backend": "^1.5.1",
-    "@aws-amplify/backend-cli": "^1.3.0",
+    "@aws-amplify/backend-cli": "^1.8.0",
+    "@types/body-parser": "^1.19.5",
+    "@types/http-errors": "^2.0.4",
     "@types/jasmine": "~5.1.0",
+    "@types/node": "^20.11.0",
+    "@types/qs": "^6.9.11",
+    "@types/range-parser": "^1.2.7",
     "aws-cdk": "^2.137.0",
     "aws-cdk-lib": "^2.137.0",
     "constructs": "^10.3.0",
@@ -41,6 +59,6 @@
     "karma-jasmine": "~5.1.0",
     "karma-jasmine-html-reporter": "~2.1.0",
     "tsx": "^4.7.2",
-    "typescript": "^5.4.5"
+    "typescript": "~5.4.5"
   }
 }
