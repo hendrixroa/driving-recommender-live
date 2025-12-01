@@ -9,10 +9,15 @@ The Voice Route Planner is a full-stack web application built with AWS Amplify G
 - **Voice Route Planner**: The complete web application system
 - **User**: A person interacting with the application through voice commands
 - **Voice Interface**: The speech recognition and synthesis component that handles user voice input and system audio output
+- **Voice Synthesis Service**: The backend Lambda service using Piper TTS engine to generate high-quality speech audio from text
+- **Piper**: A fast, local neural text-to-speech system that produces natural-sounding speech
 - **Route Service**: The backend service that processes route requests and integrates with Amazon Location Service
 - **News Service**: The backend service that retrieves and filters news related to route locations
 - **Agent Service**: The Lambda-based service using LlamaIndex workflow agent to process voice text and generate intelligent responses from AWS Location Service
-- **LlamaIndex Workflow**: The TypeScript workflow framework that orchestrates agent reasoning and tool execution
+- **LlamaIndex Workflow**: The Python workflow framework that orchestrates agent reasoning and tool execution
+- **AWS Lambda SnapStart**: AWS feature that improves cold start performance by caching initialized function state
+- **Lambda Layer**: A distribution mechanism for libraries and dependencies that can be shared across Lambda functions
+- **Lambda Response Streaming**: AWS Lambda feature that enables streaming responses to clients without buffering
 - **Amplify Backend**: The AWS Amplify Gen 2 backend infrastructure including authentication, APIs, and data storage
 - **Angular Frontend**: The client-side application built with Angular framework
 - **Amazon Location Service**: AWS service providing maps, geocoding, and routing capabilities
@@ -83,27 +88,28 @@ The Voice Route Planner is a full-stack web application built with AWS Amplify G
 
 ### Requirement 6
 
-**User Story:** As a user, I want the system to speak responses to me, so that I can receive information without looking at the screen.
+**User Story:** As a user, I want the system to speak responses to me using high-quality voice synthesis, so that I can receive information without looking at the screen.
 
 #### Acceptance Criteria
 
-1. WHEN the system has information to convey THEN the Voice Interface SHALL synthesize speech from text responses
-2. WHEN route suggestions are ready THEN the Voice Interface SHALL announce the number of available routes
-3. WHEN news updates are available THEN the Voice Interface SHALL read news headlines aloud
-4. WHEN the user requests it THEN the Voice Interface SHALL provide audio descriptions of route details
-5. WHEN audio playback is active THEN the Angular Frontend SHALL display visual indicators of speech output
+1. WHEN the system has information to convey THEN the Voice Synthesis Service SHALL generate speech audio from text responses using Piper TTS
+2. WHEN route suggestions are ready THEN the Voice Synthesis Service SHALL generate audio announcing the number of available routes
+3. WHEN news updates are available THEN the Voice Synthesis Service SHALL generate audio reading news headlines aloud
+4. WHEN the user requests it THEN the Voice Synthesis Service SHALL generate audio descriptions of route details
+5. WHEN audio is being generated THEN the Angular Frontend SHALL display visual indicators of speech output
+6. WHEN audio generation is complete THEN the Voice Synthesis Service SHALL stream audio chunks to the client immediately
 
 ### Requirement 7
 
-**User Story:** As a user, I want my session data to be stored securely, so that I can access my recent searches and preferences.
+**User Story:** As a user, I want my session data to be stored securely in my own Google Drive, so that I can access my recent searches and preferences.
 
 #### Acceptance Criteria
 
-1. WHEN a user accesses the application THEN the Amplify Backend SHALL authenticate the user securely
-2. WHEN a user searches for a destination THEN the Amplify Backend SHALL store the search history associated with the user account
-3. WHEN a user selects a route THEN the Amplify Backend SHALL save the route preference to the user profile
-4. WHEN a user returns to the application THEN the Amplify Backend SHALL retrieve and display recent searches
-5. WHEN storing user data THEN the Amplify Backend SHALL encrypt sensitive information at rest and in transit
+1. WHEN a user accesses the application THEN the Amplify Backend SHALL authenticate the user securely using Google OAuth
+2. WHEN a user searches for a destination THEN the Angular Frontend SHALL store the search history in the user's Google Drive using their authenticated access token
+3. WHEN a user selects a route THEN the Angular Frontend SHALL save the route preference to the user's Google Drive
+4. WHEN a user returns to the application THEN the Angular Frontend SHALL retrieve and display recent searches from the user's Google Drive
+5. WHEN storing user data THEN the system SHALL use Google Drive's encryption at rest and HTTPS encryption in transit
 
 ### Requirement 8
 
@@ -140,3 +146,16 @@ The Voice Route Planner is a full-stack web application built with AWS Amplify G
 3. WHEN audio output is playing THEN the Voice Interface SHALL allow the user to pause or skip announcements
 4. WHEN the user adjusts settings THEN the Angular Frontend SHALL save voice preferences for future sessions
 5. WHEN voice features are unavailable THEN the Angular Frontend SHALL gracefully degrade to text-only interaction
+
+### Requirement 11
+
+**User Story:** As a system architect, I want the voice synthesis infrastructure to use AWS Lambda SnapStart, so that cold start latency is minimized and users experience consistent performance.
+
+#### Acceptance Criteria
+
+1. WHEN the Voice Synthesis Service is deployed THEN the system SHALL use AWS Lambda SnapStart to ensure function initialization latency is consistently under 500 milliseconds
+2. WHEN the Voice Synthesis Service Lambda function is configured THEN the Amplify Backend SHALL use Python 3.12 managed runtime to satisfy SnapStart compatibility requirements
+3. WHEN packaging the Voice Synthesis Service THEN the system SHALL NOT use Docker container images
+4. WHEN deploying voice engine dependencies THEN the system SHALL package espeak-ng, Piper, and onnxruntime as an AWS Lambda Layer compatible with Amazon Linux 2023
+5. WHEN generating audio responses THEN the Voice Synthesis Service SHALL utilize AWS Lambda Response Streaming to deliver audio chunks to the client immediately upon generation
+6. WHEN defining infrastructure THEN the Amplify Backend SHALL configure the Lambda function using AWS CDK with snapStart enabled on published versions

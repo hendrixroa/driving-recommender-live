@@ -325,3 +325,126 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* Voice Section */
+.voice-section {
+  margin-bottom: 48px;
+  padding: 32px;
+  background: #f8f9fa;
+  border-radius: 12px;
+}
+
+.destination-display {
+  margin-top: 24px;
+}
+
+.destination-display mat-card {
+  background: white;
+  border-left: 4px solid #667eea;
+}
+
+.destination-display h3 {
+  margin: 0 0 8px 0;
+  color: #667eea;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.destination-display p {
+  margin: 0;
+  font-size: 1.3rem;
+  color: #333;
+  font-weight: 500;
+}
+
+/* Map Section */
+.map-section {
+  margin-bottom: 32px;
+}
+
+.map-section h3 {
+  color: #333;
+  margin-bottom: 16px;
+  font-size: 1.2rem;
+}
+
+.map-section app-map {
+  display: block;
+  height: 500px;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .voice-section {
+    padding: 24px 16px;
+  }
+  
+  .map-section app-map {
+    height: 400px;
+  }
+}
+
+/* Route Processing */
+.route-processing {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  padding: 12px;
+  background: #f0f9ff;
+  border-radius: 8px;
+}
+
+.route-processing span {
+  color: #0369a1;
+  font-size: 0.95rem;
+}
+
+.route-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 12px;
+  background: #dcfce7;
+  border-radius: 8px;
+  color: #166534;
+}
+
+.route-info mat-icon {
+  color: #16a34a;
+}
+
+.route-info span {
+  font-weight: 500;
+}
+
+/* Enable Audio Section */
+.enable-audio-section {
+  text-align: center;
+  margin: 32px 0;
+  padding: 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  color: white;
+}
+
+.enable-audio-btn {
+  font-size: 1.1rem;
+  padding: 12px 32px;
+  margin-bottom: 12px;
+}
+
+.enable-audio-btn mat-icon {
+  margin-right: 8px;
+}
+
+.audio-note {
+  margin: 8px 0 0 0;
+  font-size: 0.9rem;
+  opacity: 0.9;
+}

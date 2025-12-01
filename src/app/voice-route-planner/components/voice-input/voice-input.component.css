@@ -1,0 +1,132 @@
+.voice-input-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 20px;
+}
+
+.language-toggle {
+  margin-bottom: 10px;
+}
+
+.language-toggle mat-button-toggle-group {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+}
+
+.language-toggle mat-button-toggle {
+  font-size: 1rem;
+  padding: 8px 16px;
+}
+
+.microphone-section {
+  position: relative;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+button[mat-fab] {
+  width: 80px;
+  height: 80px;
+  z-index: 2;
+  transition: all 0.3s ease;
+}
+
+button[mat-fab].listening {
+  background-color: #f44336;
+  animation: pulse-button 1.5s ease-in-out infinite;
+}
+
+button[mat-fab] mat-icon {
+  font-size: 40px;
+  width: 40px;
+  height: 40px;
+}
+
+.listening-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 80px;
+  height: 80px;
+}
+
+.pulse-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: 3px solid #f44336;
+  border-radius: 50%;
+  animation: pulse-ring 1.5s ease-out infinite;
+  opacity: 0;
+}
+
+.pulse-ring.delay-1 {
+  animation-delay: 0.5s;
+}
+
+.pulse-ring.delay-2 {
+  animation-delay: 1s;
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+@keyframes pulse-button {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+}
+
+.recognized-text {
+  width: 100%;
+  max-width: 500px;
+}
+
+.recognized-text mat-card {
+  background-color: #f5f5f5;
+}
+
+.recognized-text p {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #333;
+  text-align: center;
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+}
+
+.permission-message {
+  width: 100%;
+  max-width: 500px;
+}
+
+.permission-message mat-card {
+  background-color: #fff3cd;
+  border: 1px solid #ffc107;
+}
+
+.permission-message p {
+  margin: 0;
+  color: #856404;
+  text-align: center;
+}

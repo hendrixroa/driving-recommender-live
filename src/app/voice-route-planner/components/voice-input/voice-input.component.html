@@ -1,0 +1,57 @@
+<div class="voice-input-container">
+  <!-- Language Toggle -->
+  <div class="language-toggle">
+    <mat-button-toggle-group 
+      [value]="selectedLanguage" 
+      (change)="onLanguageChange($event.value)"
+      [disabled]="isListening">
+      <mat-button-toggle value="es">
+        🇪🇸 Español
+      </mat-button-toggle>
+      <mat-button-toggle value="en">
+        🇺🇸 English
+      </mat-button-toggle>
+    </mat-button-toggle-group>
+  </div>
+
+  <div class="microphone-section">
+    <button 
+      mat-fab 
+      color="primary" 
+      [class.listening]="isListening"
+      (click)="isListening ? stopListening() : startListening()"
+      [disabled]="permissionDenied"
+      aria-label="Voice input">
+      <mat-icon>{{ isListening ? 'mic' : 'mic_none' }}</mat-icon>
+    </button>
+    
+    <div class="listening-indicator" *ngIf="isListening">
+      <div class="pulse-ring"></div>
+      <div class="pulse-ring delay-1"></div>
+      <div class="pulse-ring delay-2"></div>
+    </div>
+  </div>
+
+  <div class="recognized-text" *ngIf="recognizedText">
+    <mat-card>
+      <mat-card-content>
+        <p>{{ recognizedText }}</p>
+      </mat-card-content>
+    </mat-card>
+  </div>
+
+  <div class="controls" *ngIf="isListening">
+    <button mat-raised-button color="warn" (click)="interruptListening()">
+      <mat-icon>stop</mat-icon>
+      Stop
+    </button>
+  </div>
+
+  <div class="permission-message" *ngIf="permissionDenied">
+    <mat-card color="warn">
+      <mat-card-content>
+        <p>Microphone access is required. Please enable it in your browser settings.</p>
+      </mat-card-content>
+    </mat-card>
+  </div>
+</div>

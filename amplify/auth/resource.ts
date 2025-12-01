@@ -25,7 +25,8 @@ export const auth = defineAuth({
           familyName: 'family_name',
           profilePicture: 'picture',
           fullname: 'name'
-        }
+        },
+        scopes: ['email', 'profile', 'openid', 'https://www.googleapis.com/auth/drive.appdata', 'https://www.googleapis.com/auth/drive.file']
       },
       callbackUrls: ['http://localhost:4200/auth/callback'],
       logoutUrls: ['http://localhost:4200']

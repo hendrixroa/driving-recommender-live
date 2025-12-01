@@ -1,0 +1,12 @@
+<div class="map-wrapper">
+  <div id="map-container" class="map-container"></div>
+  
+  <div class="loading-overlay" *ngIf="isLoadingLocation">
+    <div class="spinner"></div>
+    <p>Getting your location...</p>
+  </div>
+
+  <div class="error-message" *ngIf="locationError">
+    <p>{{ locationError }}</p>
+  </div>
+</div>

@@ -22,7 +22,8 @@ export class VoiceRoutePlannerStack extends Stack {
       description: 'Google OAuth 2.0 credentials for Google Drive API access',
       secretStringValue: SecretValue.unsafePlainText(JSON.stringify({
         clientId: process.env.GOOGLE_CLIENT_ID || 'placeholder-client-id',
-        clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'placeholder-client-secret'
+        clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'placeholder-client-secret',
+        geminiApiKey: process.env.GEMINI_API_KEY || 'placeholder-gemini-api-key'
       }))
     });
 

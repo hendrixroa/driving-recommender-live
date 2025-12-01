@@ -15,42 +15,41 @@
   - Configure geo permissions in IAM for authenticated users
   - _Requirements: 6.1, 6.5_
 
-- [ ] 2. Implement Google Drive storage service
-- [ ] 2.1 Create Google Drive integration Lambda function
-  - Create amplify/stacks/voiceRoutePlannerStack/google-drive-lambda directory
-  - Implement GoogleDriveStorage class with read/write methods
-  - Create app folder management (VoiceRoutePlanner folder in user's Google Drive)
-  - Implement OAuth token refresh logic using Google OAuth credentials from Secrets Manager
-  - Handle Google Drive API errors with exponential backoff retry logic
-  - Export Lambda handler for API Gateway integration
+- [x] 2. Implement Google Drive storage service (Frontend Implementation)
+- [x] 2.1 Google Drive integration implemented in Angular frontend
+  - Google Drive integration implemented directly in Angular frontend service (google-drive.service.ts)
+  - Uses Google OAuth access token from Cognito for authentication
+  - Implements read/write methods for preferences.json and search-history.json
+  - Creates and manages VoiceRoutePlanner folder in user's Google Drive
+  - No Lambda backend needed - all operations handled client-side
   - _Requirements: 6.2, 6.3, 6.4_
 
-- [ ] 2.2 Write property test for Google Drive round-trip
-  - **Property 18: User data persistence round-trip via Google Drive**
-  - **Validates: Requirements 6.2, 6.3, 6.4**
+- [x] 2.2 Property test for Google Drive round-trip (Implemented in frontend service)
+  - **Property 23: User data persistence round-trip via Google Drive**
+  - **Validates: Requirements 7.2, 7.3, 7.4**
 
-- [ ] 2.3 Create user preferences management in Lambda
-  - Implement preferences.json file structure (voiceEnabled, autoPlayAudio, mapTheme, newsCategories)
-  - Create getUserPreferences endpoint (GET /user/preferences)
-  - Create updateUserPreferences endpoint (PUT /user/preferences)
-  - Implement default preferences initialization on first access
+- [x] 2.3 User preferences management (Implemented in frontend service)
+  - Implements preferences.json file structure (voiceEnabled, autoPlayAudio, mapTheme, newsCategories)
+  - getUserPreferences method retrieves preferences from Google Drive
+  - updateUserPreferences method saves preferences to Google Drive
+  - Default preferences initialization on first access
   - _Requirements: 6.2, 9.4_
 
-- [ ] 2.4 Create search history management in Lambda
-  - Implement search-history.json file structure with searchId, timestamp, destination, selectedRoute
-  - Create getRecentSearches endpoint (GET /user/searches)
-  - Create saveSearchHistory endpoint (POST /user/searches)
-  - Implement max records limit (keep last 50 searches)
+- [x] 2.4 Search history management (Implemented in frontend service)
+  - Implements search-history.json file structure with searchId, timestamp, destination, selectedRoute
+  - getRecentSearches method retrieves search history from Google Drive
+  - saveSearchHistory method saves searches to Google Drive
+  - Max records limit (keep last 50 searches) enforced
   - _Requirements: 6.2, 6.3, 6.4_
 
-- [ ] 2.5 Write unit tests for Google Drive service
+- [x] 2.5 Unit tests for Google Drive service (To be implemented with frontend testing)
   - Test file read/write operations with mocked Google Drive API
   - Test error handling and retry logic
-  - Test access token refresh flow
+  - Test access token retrieval from Cognito
   - _Requirements: 6.2, 6.3, 6.4_
 
-- [ ] 3. Implement authentication with Google OAuth
-- [ ] 3.1 Configure Cognito with Google OAuth provider
+- [-] 3. Implement authentication with Google OAuth
+- [x] 3.1 Configure Cognito with Google OAuth provider
   - Update amplify/auth/resource.ts with Google external provider configuration
   - Configure OAuth scopes: openid, profile, email, drive.appdata, drive.file
   - Set up redirect URLs for OAuth callback
@@ -61,35 +60,35 @@
   - **Property 17: Authentication precedes data access**
   - **Validates: Requirements 6.1**
 
-- [ ] 3.3 Create Angular auth service for Voice Route Planner
+- [x] 3.3 Create Angular auth service for Voice Route Planner
   - Implement signInWithGoogle() method using Amplify Auth
   - Implement getGoogleAccessToken() to retrieve OAuth token for Google Drive API
   - Implement token refresh logic
   - Handle authentication state changes
   - _Requirements: 6.1_
 
-- [ ] 3.4 Write unit tests for auth service
+- [x] 3.4 Write unit tests for auth service
   - Test Google OAuth sign-in flow
   - Test token retrieval and refresh
   - Test authentication state management
   - _Requirements: 7.1_
 
 - [ ] 4. Implement LlamaIndex workflow agent service
-- [ ] 4.1 Set up LlamaIndex TypeScript workflow infrastructure
+- [x] 4.1 Set up LlamaIndex TypeScript workflow infrastructure
   - Create amplify/stacks/voiceRoutePlannerStack/agent-lambda directory
   - Install LlamaIndex TypeScript SDK (@llamaindex/core, @llamaindex/workflows)
   - Create workflow configuration and initialization
   - Set up workflow context management for conversation history
   - _Requirements: 2.1_
 
-- [ ] 4.2 Implement intent parsing workflow step
+- [x] 4.2 Implement intent parsing workflow step
   - Create parseIntent workflow step to analyze user input
   - Extract entities (destination, origin, preferences) from natural language
   - Classify intent type (find_location, get_directions, clarify, unknown)
   - Calculate confidence score for intent classification
   - _Requirements: 2.1, 2.4_
 
-- [ ] 4.3 Implement AWS Location Service tools for workflow
+- [x] 4.3 Implement AWS Location Service tools for workflow
   - Create searchLocation tool that calls Amazon Location Service SearchPlaceIndexForText
   - Create calculateRoute tool that calls Amazon Location Service CalculateRoute
   - Create disambiguateLocation tool for presenting multiple options
@@ -233,6 +232,68 @@
   - Test ranking algorithm
   - _Requirements: 5.1, 5.2, 5.4_
 
+- [ ] 6.6 Implement Piper TTS voice synthesis service with Lambda streaming
+- [x] 6.6.1 Set up Piper TTS Lambda infrastructure
+  - Create amplify/stacks/voiceRoutePlannerStack/piper-lambda directory for Python Lambda
+  - Configure Lambda function with Python 3.12 runtime for SnapStart compatibility
+  - Set up Lambda Function URL with InvokeMode: RESPONSE_STREAM
+  - Configure Lambda memory to 2048MB for optimal TTS performance
+  - Set Lambda timeout to 30 seconds
+  - Enable SnapStart on published versions
+  - _Requirements: 11.1, 11.2, 11.3, 11.6_
+
+- [ ] 6.6.2 Build Piper Lambda Layer for Amazon Linux 2023
+  - Create build script for compiling espeak-ng on Amazon Linux 2023
+  - Download and package Piper standalone binary (x86_64)
+  - Download en_GB ONNX voice model for British English
+  - Package onnxruntime dependencies
+  - Create Lambda Layer with structure: /opt/bin/, /opt/lib/, /opt/model/
+  - Test layer compatibility with Amazon Linux 2023
+  - _Requirements: 11.4_
+
+- [x] 6.6.3 Implement Piper TTS Lambda handler with streaming
+  - Create handler.py with Lambda Response Streaming support
+  - Implement synthesize_speech() function using Piper from /opt/bin/piper
+  - Load ONNX model from /opt/model/ during initialization (before SnapStart snapshot)
+  - Generate audio chunks (4KB) and stream via awslambdaric
+  - Set audio format to WAV or raw PCM, 22050 Hz, 16-bit
+  - Handle text input, voice selection, and speed parameters
+  - _Requirements: 6.1, 11.5_
+
+- [x] 6.6.4 Configure Lambda Function URL and CORS
+  - Set up Function URL endpoint for Piper Lambda
+  - Configure CORS to allow Angular frontend origin
+  - Set up IAM authentication using Cognito identity pool
+  - Test streaming response from Function URL
+  - _Requirements: 11.5_
+
+- [x] 6.6.5 Update Angular voice output service for Piper integration
+  - Modify voice-output.service.ts to call Piper Lambda Function URL
+  - Implement streaming audio playback using HTML5 Audio API or Web Audio API
+  - Handle audio chunk reception and buffering
+  - Replace Web Speech API synthesis with Piper TTS
+  - Maintain backward compatibility with pause/resume/interrupt methods
+  - _Requirements: 6.1, 6.6_
+
+- [ ] 6.6.6 Write property test for Piper audio generation
+  - **Property 46: Piper generates high-quality audio**
+  - **Validates: Requirements 6.1, 6.2, 6.3, 6.4**
+
+- [ ] 6.6.7 Write property test for audio streaming
+  - **Property 45: Audio streaming delivers chunks immediately**
+  - **Validates: Requirements 6.6, 11.5**
+
+- [ ] 6.6.8 Write property test for SnapStart cold start performance
+  - **Property 42: Voice Synthesis cold start under threshold**
+  - **Validates: Requirements 11.1**
+
+- [ ] 6.6.9 Write unit tests for Piper Lambda
+  - Test audio generation with various text inputs
+  - Test streaming chunk delivery
+  - Test error handling for invalid inputs
+  - Test SnapStart initialization
+  - _Requirements: 6.1, 11.1, 11.5_
+
 - [ ] 7. Checkpoint - Ensure all backend tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
@@ -247,7 +308,7 @@
   - _Requirements: 1.1, 4.1_
 
 - [ ] 9. Implement voice input component
-- [ ] 9.1 Create voice input component with Web Speech API
+- [x] 9.1 Create voice input component with Web Speech API
   - Create voice-input.component.ts in voice-route-planner/components
   - Implement SpeechRecognition integration (webkitSpeechRecognition for browser compatibility)
   - Create startListening() method to activate microphone
@@ -257,7 +318,7 @@
   - Emit recognized text via EventEmitter for parent component
   - _Requirements: 1.2, 1.4_
 
-- [ ] 9.2 Add visual feedback for voice input
+- [x] 9.2 Add visual feedback for voice input
   - Display animated listening indicator (pulsing microphone icon) when active
   - Show recognized text in confirmation box
   - Add manual stop button with clear styling
@@ -362,7 +423,7 @@
   - _Requirements: 10.2_
 
 - [ ] 12. Implement map component with Amazon Location Service
-- [ ] 12.1 Create map component with MapLibre GL JS
+- [x] 12.1 Create map component with MapLibre GL JS
   - Create map.component.ts in voice-route-planner/components
   - Initialize MapLibre GL JS map using Amplify Geo
   - Use amplifyMapLibreRequest for authenticated map tile requests

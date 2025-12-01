@@ -1,6 +1,8 @@
 import { Component, OnInit } from '@angular/core';
 import { Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
+import { Hub } from 'aws-amplify/utils';
+import { getCurrentUser } from 'aws-amplify/auth';
 
 @Component({
   selector: 'app-auth-callback',
@@ -10,6 +12,7 @@ import { CommonModule } from '@angular/common';
     <div class="callback-container">
       <div class="spinner"></div>
       <p>Completing sign in...</p>
+      <p *ngIf="error" class="error">{{ error }}</p>
     </div>
   `,
   styles: [`
@@ -40,17 +43,47 @@ import { CommonModule } from '@angular/common';
     p {
       font-size: 1.1rem;
     }
+    
+    .error {
+      color: #ff6b6b;
+      margin-top: 10px;
+    }
   `]
 })
 export class AuthCallbackComponent implements OnInit {
-  constructor(private router: Router) {}
+  error: string | null = null;
 
-  ngOnInit() {
-    // Amplify processes the OAuth callback automatically
-    // Just redirect to home page after a brief delay
+  constructor(private router: Router) { }
+
+  async ngOnInit() {
+    // Listen for auth events
+    Hub.listen('auth', ({ payload }: any) => {
+      switch (payload.event) {
+        case 'signInWithRedirect':
+          this.handleSignInSuccess();
+          break;
+        case 'signInWithRedirect_failure':
+          this.error = 'Sign in failed. Please try again.';
+          console.error('Sign in failure', payload.data);
+          break;
+      }
+    });
+
+    // Also check if we are already authenticated (in case event was missed)
+    try {
+      await getCurrentUser();
+      this.handleSignInSuccess();
+    } catch (err) {
+      // Not authenticated yet, wait for Hub event or timeout
+      console.log('Not authenticated yet, waiting for Hub event...');
+    }
+  }
+
+  private handleSignInSuccess() {
+    // Small delay to ensure session is fully established
     setTimeout(() => {
       this.router.navigate(['/']);
-    }, 1500);
+    }, 500);
   }
 }
 

@@ -1,3 +1,9 @@
+/* MapLibre GL CSS */
+@import 'maplibre-gl/dist/maplibre-gl.css';
+
+/* Material Design Theme */
+@import '@angular/material/prebuilt-themes/indigo-pink.css';
+
 /* Global Styles */
 * {
   margin: 0;

@@ -54,41 +54,49 @@
         </div>
 
         <div class="welcome-message">
-          <h2>Welcome back, {{ userName }}!</h2>
-          <p>Your voice-powered route planning assistant is ready.</p>
+          <h2>¡Bienvenido de nuevo, {{ userName }}!</h2>
+          <p>¿A dónde vas?</p>
         </div>
 
-        <div class="features-grid">
-          <div class="feature-card">
-            <div class="feature-icon">🎤</div>
-            <h3>Voice Commands</h3>
-            <p>Use natural language to plan your routes</p>
-          </div>
-
-          <div class="feature-card">
-            <div class="feature-icon">🗺️</div>
-            <h3>Interactive Maps</h3>
-            <p>View routes on detailed maps with real-time updates</p>
-          </div>
-
-          <div class="feature-card">
-            <div class="feature-icon">📰</div>
-            <h3>Route News</h3>
-            <p>Get traffic and weather updates for your routes</p>
-          </div>
-
-          <div class="feature-card">
-            <div class="feature-icon">💾</div>
-            <h3>Save History</h3>
-            <p>Access your recent searches and favorite routes</p>
-          </div>
-        </div>
-
-        <div class="cta-section">
-          <button class="primary-btn" disabled>
-            Start Planning (Coming Soon)
+        <!-- Enable Audio Button -->
+        <div class="enable-audio-section" *ngIf="showEnableAudioButton">
+          <button mat-raised-button color="primary" (click)="enableAudio()" class="enable-audio-btn">
+            <mat-icon>volume_up</mat-icon>
+            Habilitar Audio
           </button>
-          <p class="note">Voice route planning features will be available in the next update</p>
+          <p class="audio-note">Haz clic para habilitar las respuestas de voz</p>
+        </div>
+
+        <!-- Voice Input Section -->
+        <div class="voice-section">
+          <app-voice-input
+            (speechRecognized)="onSpeechRecognized($event)"
+            (error)="onVoiceError($event)"
+            (interrupted)="onVoiceInterrupted()">
+          </app-voice-input>
+          
+          <div class="destination-display" *ngIf="destination">
+            <mat-card>
+              <mat-card-content>
+                <h3>Destino</h3>
+                <p>{{ destination }}</p>
+                <div class="route-processing" *ngIf="isProcessingRoute">
+                  <mat-spinner diameter="30"></mat-spinner>
+                  <span>Calculando ruta...</span>
+                </div>
+                <div class="route-info" *ngIf="routeInfo && !isProcessingRoute">
+                  <mat-icon>directions</mat-icon>
+                  <span>{{ routeInfo }}</span>
+                </div>
+              </mat-card-content>
+            </mat-card>
+          </div>
+        </div>
+
+        <!-- Map Section -->
+        <div class="map-section">
+          <h3>Tu Ubicación</h3>
+          <app-map></app-map>
         </div>
       </div>
     </div>
