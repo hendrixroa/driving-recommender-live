@@ -84,10 +84,86 @@
                   <mat-spinner diameter="30"></mat-spinner>
                   <span>Calculando ruta...</span>
                 </div>
-                <div class="route-info" *ngIf="routeInfo && !isProcessingRoute">
+                <div class="route-info" *ngIf="routeInfo && !isProcessingRoute && !showingAlternatives">
                   <mat-icon>directions</mat-icon>
                   <span>{{ routeInfo }}</span>
                 </div>
+              </mat-card-content>
+            </mat-card>
+          </div>
+
+          <!-- Route Alternatives -->
+          <div class="route-alternatives" *ngIf="showingAlternatives && !isNavigating">
+            <h3>Rutas Disponibles</h3>
+            <div class="alternatives-grid">
+              <mat-card 
+                *ngFor="let alternative of routeAlternatives; let i = index"
+                class="alternative-card"
+                [class.selected]="selectedRouteIndex === i"
+                (click)="selectRoute(i)">
+                <mat-card-header>
+                  <mat-card-title>{{ alternative.label }}</mat-card-title>
+                  <mat-icon *ngIf="selectedRouteIndex === i" class="selected-icon">check_circle</mat-icon>
+                </mat-card-header>
+                <mat-card-content>
+                  <div class="route-details">
+                    <div class="detail-item">
+                      <mat-icon>straighten</mat-icon>
+                      <span>{{ formatDistance(alternative.distance) }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <mat-icon>schedule</mat-icon>
+                      <span>{{ formatDuration(alternative.duration) }}</span>
+                    </div>
+                    <div class="detail-item">
+                      <mat-icon [style.color]="getTrafficColor(alternative.trafficFactor)">traffic</mat-icon>
+                      <span>Tráfico: {{ getTrafficLevel(alternative.trafficFactor) }}</span>
+                    </div>
+                  </div>
+                  <div class="potential-issues" *ngIf="alternative.potentialIssues.length > 0">
+                    <mat-icon class="warning-icon">warning</mat-icon>
+                    <span>{{ alternative.potentialIssues.join(', ') }}</span>
+                  </div>
+                </mat-card-content>
+              </mat-card>
+            </div>
+            <div class="action-buttons">
+              <button mat-raised-button color="primary" 
+                      [disabled]="selectedRouteIndex === null"
+                      (click)="startNavigation()">
+                <mat-icon>navigation</mat-icon>
+                Comenzar Navegación
+              </button>
+              <button mat-stroked-button (click)="cancelRouteSelection()">
+                <mat-icon>cancel</mat-icon>
+                Cancelar
+              </button>
+            </div>
+          </div>
+
+          <!-- Navigation Mode -->
+          <div class="navigation-mode" *ngIf="isNavigating">
+            <mat-card class="navigation-card">
+              <mat-card-content>
+                <div class="navigation-header">
+                  <mat-icon class="navigation-icon">navigation</mat-icon>
+                  <h3>Navegando</h3>
+                </div>
+                <p class="navigation-route">{{ routeAlternatives[selectedRouteIndex!].label }}</p>
+                <div class="navigation-stats">
+                  <div class="stat">
+                    <span class="stat-label">Distancia</span>
+                    <span class="stat-value">{{ formatDistance(routeAlternatives[selectedRouteIndex!].distance) }}</span>
+                  </div>
+                  <div class="stat">
+                    <span class="stat-label">Tiempo</span>
+                    <span class="stat-value">{{ formatDuration(routeAlternatives[selectedRouteIndex!].duration) }}</span>
+                  </div>
+                </div>
+                <button mat-raised-button color="warn" (click)="cancelRouteSelection()">
+                  <mat-icon>stop</mat-icon>
+                  Detener Navegación
+                </button>
               </mat-card-content>
             </mat-card>
           </div>

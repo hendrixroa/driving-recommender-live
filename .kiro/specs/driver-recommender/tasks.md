@@ -242,15 +242,6 @@
   - Enable SnapStart on published versions
   - _Requirements: 11.1, 11.2, 11.3, 11.6_
 
-- [ ] 6.6.2 Build Piper Lambda Layer for Amazon Linux 2023
-  - Create build script for compiling espeak-ng on Amazon Linux 2023
-  - Download and package Piper standalone binary (x86_64)
-  - Download en_GB ONNX voice model for British English
-  - Package onnxruntime dependencies
-  - Create Lambda Layer with structure: /opt/bin/, /opt/lib/, /opt/model/
-  - Test layer compatibility with Amazon Linux 2023
-  - _Requirements: 11.4_
-
 - [x] 6.6.3 Implement Piper TTS Lambda handler with streaming
   - Create handler.py with Lambda Response Streaming support
   - Implement synthesize_speech() function using Piper from /opt/bin/piper

@@ -30,11 +30,13 @@ export class VoiceOutputService {
 
   async speak(text: string, options?: SpeechOptions): Promise<void> {
     if (!this.piperFunctionUrl) {
-      throw new Error('Piper TTS function URL not configured');
+      console.error('Piper TTS not configured');
+      throw new Error('Voice synthesis not available');
     }
 
     if (!this.audioElement) {
-      throw new Error('Audio element not supported');
+      console.error('Audio element not supported');
+      throw new Error('Audio playback not available');
     }
 
     this.stop();
@@ -49,44 +51,43 @@ export class VoiceOutputService {
         body: JSON.stringify({
           text,
           speed: options?.speed || 1.0,
-          lang: options?.lang || 'es-ES',
+          lang: options?.lang || 'es-MX',
         }),
       });
 
       if (!response.ok) {
-        throw new Error(`Piper TTS request failed: ${response.statusText}`);
+        throw new Error(`Piper TTS failed: ${response.statusText}`);
       }
 
-      if (!response.body) {
-        throw new Error('Response body is null');
-      }
-
-      const reader = response.body.getReader();
-      const chunks: Uint8Array[] = [];
-
-      while (true) {
-        const { done, value } = await reader.read();
-        
-        if (done) break;
-        
-        if (value) {
-          chunks.push(value);
-          this.onAudioChunkReceived.emit(value.buffer);
-        }
-      }
-
-      const totalLength = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
-      console.log('Total audio data length:', totalLength);
+      const responseData = await response.json();
       
-      const audioData = new Uint8Array(totalLength);
-      let offset = 0;
-      for (const chunk of chunks) {
-        audioData.set(chunk, offset);
-        offset += chunk.length;
+      // Check for error response
+      if (responseData.error) {
+        console.error('Lambda returned error:', responseData.error);
+        throw new Error(`Lambda error: ${responseData.error}`);
       }
 
-      console.log('First 44 bytes (WAV header):', Array.from(audioData.slice(0, 44)));
-      console.log('WAV header string:', String.fromCharCode(...audioData.slice(0, 4)));
+      // Decode base64 audio data
+      const base64Audio = responseData.audioData;
+      if (!base64Audio) {
+        throw new Error('No audio data in response');
+      }
+
+      console.log('✅ Received audio data:', responseData.size, 'bytes');
+      
+      // Convert base64 to binary
+      const binaryString = atob(base64Audio);
+      const audioData = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        audioData[i] = binaryString.charCodeAt(i);
+      }
+      
+      const riffHeader = String.fromCharCode(...audioData.slice(0, 4));
+      const waveHeader = String.fromCharCode(...audioData.slice(8, 12));
+      
+      if (riffHeader !== 'RIFF' || waveHeader !== 'WAVE') {
+        throw new Error('Invalid WAV file format received from server');
+      }
       
       const blob = new Blob([audioData], { type: 'audio/wav' });
       const url = URL.createObjectURL(blob);
@@ -95,6 +96,7 @@ export class VoiceOutputService {
       await this.playAudio(url);
 
     } catch (error) {
+      console.error('Piper TTS error:', error);
       this.isLoading = false;
       this.isSpeaking = false;
       throw error;
@@ -108,39 +110,55 @@ export class VoiceOutputService {
         return;
       }
 
-      this.audioElement.src = url;
-      
       const onEnded = () => {
         this.isSpeaking = false;
+        if (this.audioElement) {
+          this.audioElement.removeEventListener('ended', onEnded);
+          this.audioElement.removeEventListener('error', onError);
+        }
         URL.revokeObjectURL(url);
-        this.audioElement?.removeEventListener('ended', onEnded);
-        this.audioElement?.removeEventListener('error', onError);
         resolve();
       };
 
-      const onError = (e: ErrorEvent) => {
-        console.error('Audio element error:', e);
-        console.error('Audio element error details:', this.audioElement?.error);
+      const onError = (e: Event) => {
+        console.error('Audio playback error:', e);
+        if (this.audioElement?.error) {
+          console.error('Error details:', this.audioElement.error);
+        }
         this.isSpeaking = false;
+        if (this.audioElement) {
+          this.audioElement.removeEventListener('ended', onEnded);
+          this.audioElement.removeEventListener('error', onError);
+        }
         URL.revokeObjectURL(url);
-        this.audioElement?.removeEventListener('ended', onEnded);
-        this.audioElement?.removeEventListener('error', onError);
         reject(new Error(`Audio playback error: ${this.audioElement?.error?.message || 'Unknown'}`));
       };
 
       this.audioElement.addEventListener('ended', onEnded);
       this.audioElement.addEventListener('error', onError);
 
+      this.audioElement.src = url;
       this.isSpeaking = true;
-      this.audioElement.play().catch(reject);
+      
+      this.audioElement.play().catch((error) => {
+        console.error('Play error:', error);
+        this.audioElement?.removeEventListener('ended', onEnded);
+        this.audioElement?.removeEventListener('error', onError);
+        URL.revokeObjectURL(url);
+        reject(error);
+      });
     });
   }
 
   stop(): void {
     if (this.audioElement) {
-      this.audioElement.pause();
-      this.audioElement.currentTime = 0;
-      this.audioElement.src = '';
+      // Remove all event listeners before stopping
+      const oldElement = this.audioElement;
+      this.audioElement = new Audio();
+      
+      // Clean up old element
+      oldElement.pause();
+      oldElement.src = '';
     }
     this.isSpeaking = false;
     this.isLoading = false;

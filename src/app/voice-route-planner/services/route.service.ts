@@ -28,6 +28,17 @@ export interface Route {
   steps: RouteStep[];
 }
 
+export interface RouteAlternative {
+  label: string;
+  distance: number;
+  duration: number;
+  trafficFactor: number;
+  potentialIssues: string[];
+  geometry: LatLng[];
+  avoidTolls: boolean;
+  avoidHighways: boolean;
+}
+
 @Injectable({
   providedIn: 'root'
 })
@@ -131,5 +142,71 @@ export class RouteService {
     const hours = Math.floor(minutes / 60);
     const remainingMinutes = minutes % 60;
     return `${hours}h ${remainingMinutes}min`;
+  }
+
+  async getRouteAlternatives(origin: LatLng, destination: LatLng): Promise<RouteAlternative[]> {
+    try {
+      const alternatives: RouteAlternative[] = [];
+
+      // Get 3 different route alternatives with different parameters
+      const routeConfigs = [
+        { label: 'Ruta más rápida', alternatives: 'true', continue_straight: 'default' },
+        { label: 'Ruta más corta', alternatives: 'true', continue_straight: 'false' },
+        { label: 'Ruta alternativa', alternatives: 'true', continue_straight: 'true' }
+      ];
+
+      for (const config of routeConfigs) {
+        const url = `${this.OSRM_API}/route/v1/driving/${origin.lng},${origin.lat};${destination.lng},${destination.lat}?overview=full&geometries=geojson&alternatives=${config.alternatives}&continue_straight=${config.continue_straight}`;
+        
+        try {
+          const response: any = await firstValueFrom(this.http.get(url));
+
+          if (response && response.routes && response.routes.length > 0) {
+            const osrmRoute = response.routes[0];
+            
+            // Convert GeoJSON coordinates to LatLng array
+            const geometry: LatLng[] = osrmRoute.geometry.coordinates.map((coord: number[]) => ({
+              lng: coord[0],
+              lat: coord[1]
+            }));
+
+            // Simulate traffic factor (in real app, this would come from traffic API)
+            const trafficFactor = 1 + (Math.random() * 0.5); // 1.0 to 1.5
+            const adjustedDuration = osrmRoute.duration * trafficFactor;
+
+            // Simulate potential issues
+            const potentialIssues: string[] = [];
+            if (trafficFactor > 1.3) {
+              potentialIssues.push('Tráfico pesado');
+            }
+            if (osrmRoute.distance > 50000) {
+              potentialIssues.push('Ruta larga');
+            }
+
+            alternatives.push({
+              label: config.label,
+              distance: osrmRoute.distance,
+              duration: adjustedDuration,
+              trafficFactor,
+              potentialIssues,
+              geometry,
+              avoidTolls: false,
+              avoidHighways: false
+            });
+          }
+        } catch (error) {
+          console.error(`Error fetching route for ${config.label}:`, error);
+        }
+      }
+
+      // Sort by duration (fastest first)
+      alternatives.sort((a, b) => a.duration - b.duration);
+
+      // Return top 3 unique alternatives
+      return alternatives.slice(0, 3);
+    } catch (error) {
+      console.error('Error getting route alternatives:', error);
+      return [];
+    }
   }
 }

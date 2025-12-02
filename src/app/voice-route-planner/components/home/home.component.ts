@@ -6,7 +6,7 @@ import { VoiceInputComponent } from '../voice-input/voice-input.component';
 import { MapComponent } from '../map/map.component';
 import { VoiceOutputService } from '../../services/voice-output.service';
 import { RouteService } from '../../services/route.service';
-import { AgentService } from '../../services/agent.service';
+import { AgentService, RouteAlternative } from '../../services/agent.service';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -43,6 +43,10 @@ export class HomeComponent implements OnInit {
   routeInfo: string = '';
   showEnableAudioButton = false;
   audioEnabled = false;
+  routeAlternatives: RouteAlternative[] = [];
+  selectedRouteIndex: number | null = null;
+  showingAlternatives = false;
+  isNavigating = false;
 
   constructor(
     private router: Router,
@@ -160,6 +164,12 @@ export class HomeComponent implements OnInit {
       // Get current location from map
       const currentLocation = this.mapComponent.getCurrentLocation();
 
+      // Check if this is a route selection command
+      if (this.showingAlternatives && this.handleRouteSelectionCommand(destination)) {
+        this.isProcessingRoute = false;
+        return;
+      }
+
       // Step 1: Process with AI agent
       const agentResponse = await this.agentService.processVoiceInput(
         destination,
@@ -167,10 +177,14 @@ export class HomeComponent implements OnInit {
         this.userId || undefined
       );
 
+      console.log('Agent response received:', agentResponse);
+      console.log('Agent response type:', agentResponse.type);
+      console.log('Agent response data:', agentResponse.data);
+
       // Announce agent's natural language response
       await this.voiceOutput.speak(
         agentResponse.naturalLanguageResponse,
-        { lang: 'es-ES' }
+        { lang: 'es-MX' }
       );
 
       // Step 2: Handle different response types
@@ -195,8 +209,39 @@ export class HomeComponent implements OnInit {
         return;
       }
 
-      // Step 3: If agent found location, get the route
-      if (agentResponse.type === 'location' && agentResponse.data) {
+      // Step 3: Handle route alternatives from agent
+      if (agentResponse.type === 'route' && agentResponse.data?.alternatives) {
+        const alternatives = agentResponse.data.alternatives;
+        
+        console.log('Received route alternatives:', alternatives);
+        console.log('Alternative distances:', alternatives.map((a: any) => ({
+          label: a.label,
+          distance: a.distance,
+          distanceKm: (a.distance / 1000).toFixed(2),
+          duration: a.duration,
+          durationMin: (a.duration / 60).toFixed(1)
+        })));
+        
+        // Store alternatives and show them
+        this.routeAlternatives = alternatives;
+        this.showingAlternatives = true;
+
+        // Display first route on map as preview
+        if (alternatives.length > 0 && alternatives[0].geometry) {
+          const firstRoute = alternatives[0];
+          const destination = firstRoute.geometry[firstRoute.geometry.length - 1];
+          this.mapComponent.displayRoute(firstRoute.geometry, destination);
+        }
+
+        this.snackBar.open('¡Rutas calculadas!', 'Cerrar', {
+          duration: 3000,
+          horizontalPosition: 'center',
+          verticalPosition: 'top'
+        });
+      }
+      
+      // Fallback: If agent found location but no routes, calculate them ourselves
+      else if (agentResponse.type === 'location' && agentResponse.data) {
         const locationData = agentResponse.data;
         
         if (!currentLocation) {
@@ -209,13 +254,13 @@ export class HomeComponent implements OnInit {
           return;
         }
 
-        // Get route using the route service
-        const route = await this.routeService.getRoute(
+        // Get route alternatives using the route service
+        const alternatives = await this.routeService.getRouteAlternatives(
           currentLocation, 
           locationData.location
         );
         
-        if (!route) {
+        if (!alternatives || alternatives.length === 0) {
           this.snackBar.open('No se pudo calcular la ruta', 'Cerrar', {
             duration: 5000,
             horizontalPosition: 'center',
@@ -225,19 +270,14 @@ export class HomeComponent implements OnInit {
           return;
         }
 
-        // Display route on map
-        this.mapComponent.displayRoute(route.geometry, locationData.location);
-        
-        // Update route info
-        this.routeInfo = route.summary;
+        // Store alternatives and show them
+        this.routeAlternatives = alternatives;
+        this.showingAlternatives = true;
 
-        // Announce route via voice
-        await this.voiceOutput.speak(
-          `Ruta encontrada. ${route.summary}`,
-          { lang: 'es-ES' }
-        );
+        // Announce alternatives via voice
+        await this.announceRouteAlternatives(alternatives);
 
-        this.snackBar.open('¡Ruta calculada!', 'Cerrar', {
+        this.snackBar.open('¡Rutas calculadas!', 'Cerrar', {
           duration: 3000,
           horizontalPosition: 'center',
           verticalPosition: 'top'
@@ -267,5 +307,141 @@ export class HomeComponent implements OnInit {
 
   onVoiceInterrupted() {
     console.log('Voice input interrupted');
+  }
+
+  private async announceRouteAlternatives(alternatives: RouteAlternative[]): Promise<void> {
+    let announcement = `Encontré ${alternatives.length} rutas alternativas. `;
+    
+    alternatives.forEach((alt, index) => {
+      const trafficLevel = this.getTrafficLevel(alt.trafficFactor);
+      const distance = this.formatDistance(alt.distance);
+      const duration = this.formatDuration(alt.duration);
+      
+      announcement += `Opción ${index + 1}: ${alt.label}. `;
+      announcement += `Distancia: ${distance}. `;
+      announcement += `Tiempo estimado: ${duration}. `;
+      announcement += `Tráfico: ${trafficLevel}. `;
+    });
+    
+    announcement += 'Selecciona una opción para comenzar.';
+    
+    await this.voiceOutput.speak(announcement, { lang: 'es-MX' });
+  }
+
+  getTrafficLevel(trafficFactor: number): string {
+    if (trafficFactor < 1.2) return 'bajo';
+    if (trafficFactor < 1.5) return 'moderado';
+    return 'alto';
+  }
+
+  getTrafficColor(trafficFactor: number): string {
+    if (trafficFactor < 1.2) return 'green';
+    if (trafficFactor < 1.5) return 'orange';
+    return 'red';
+  }
+
+  formatDistance(meters: number): string {
+    if (meters < 1000) {
+      return `${Math.round(meters)} m`;
+    }
+    const km = meters / 1000;
+    return km < 10 ? `${km.toFixed(1)} km` : `${Math.round(km)} km`;
+  }
+
+  formatDuration(seconds: number): string {
+    const minutes = Math.round(seconds / 60);
+    if (minutes < 60) {
+      return `${minutes} min`;
+    }
+    const hours = Math.floor(minutes / 60);
+    const remainingMinutes = minutes % 60;
+    return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}min` : `${hours}h`;
+  }
+
+  async selectRoute(index: number): Promise<void> {
+    this.selectedRouteIndex = index;
+    const selectedRoute = this.routeAlternatives[index];
+    
+    // Display selected route on map
+    const locationData = { lat: selectedRoute.geometry[selectedRoute.geometry.length - 1].lat, lng: selectedRoute.geometry[selectedRoute.geometry.length - 1].lng };
+    this.mapComponent.displayRoute(selectedRoute.geometry, locationData);
+    
+    // Announce selection
+    const distance = this.formatDistance(selectedRoute.distance);
+    const duration = this.formatDuration(selectedRoute.duration);
+    await this.voiceOutput.speak(
+      `Has seleccionado ${selectedRoute.label}. ${distance}, ${duration}. ¿Listo para comenzar?`,
+      { lang: 'es-MX' }
+    );
+  }
+
+  async startNavigation(): Promise<void> {
+    if (this.selectedRouteIndex === null) {
+      this.snackBar.open('Por favor selecciona una ruta primero', 'Cerrar', {
+        duration: 3000
+      });
+      return;
+    }
+
+    this.isNavigating = true;
+    const selectedRoute = this.routeAlternatives[this.selectedRouteIndex];
+    
+    await this.voiceOutput.speak(
+      '¡Comenzando navegación! Te guiaré paso a paso.',
+      { lang: 'es-MX' }
+    );
+
+    // TODO: Implement turn-by-turn navigation
+    this.snackBar.open('Navegación iniciada', 'Cerrar', {
+      duration: 3000
+    });
+  }
+
+  cancelRouteSelection(): void {
+    this.routeAlternatives = [];
+    this.selectedRouteIndex = null;
+    this.showingAlternatives = false;
+    this.isNavigating = false;
+    this.destination = '';
+    this.routeInfo = '';
+  }
+
+  private handleRouteSelectionCommand(text: string): boolean {
+    const lowerText = text.toLowerCase();
+    
+    // Check for route selection commands
+    const optionMatch = lowerText.match(/opci[oó]n\s*(\d+)|ruta\s*(\d+)|n[uú]mero\s*(\d+)/);
+    if (optionMatch) {
+      const optionNumber = parseInt(optionMatch[1] || optionMatch[2] || optionMatch[3]) - 1;
+      if (optionNumber >= 0 && optionNumber < this.routeAlternatives.length) {
+        this.selectRoute(optionNumber);
+        return true;
+      }
+    }
+
+    // Check for "primera", "segunda", "tercera"
+    if (lowerText.includes('primera') || lowerText.includes('uno')) {
+      this.selectRoute(0);
+      return true;
+    }
+    if (lowerText.includes('segunda') || lowerText.includes('dos')) {
+      this.selectRoute(1);
+      return true;
+    }
+    if (lowerText.includes('tercera') || lowerText.includes('tres')) {
+      this.selectRoute(2);
+      return true;
+    }
+
+    // Check for "comenzar", "empezar", "iniciar"
+    if (lowerText.includes('comenzar') || lowerText.includes('empezar') || 
+        lowerText.includes('iniciar') || lowerText.includes('vamos')) {
+      if (this.selectedRouteIndex !== null) {
+        this.startNavigation();
+        return true;
+      }
+    }
+
+    return false;
   }
 }

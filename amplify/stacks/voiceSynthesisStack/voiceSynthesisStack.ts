@@ -15,13 +15,13 @@ export function voiceSynthesisStack(backend: any) {
     functionName: 'voice-synthesis-function',
     code: lambda.DockerImageCode.fromImageAsset(join(__dirname, 'voice-synthesis'), {
       file: 'Dockerfile',
-      platform: Platform.LINUX_ARM64,
+      platform: Platform.LINUX_AMD64,
     }),
-    architecture: lambda.Architecture.ARM_64,
+    architecture: lambda.Architecture.X86_64,
     timeout: Duration.seconds(30),
     memorySize: 2048,
     environment: {
-      MODEL_PATH: '/var/task/models/es_ES-davefx-medium.onnx'
+      MODEL_PATH: '/var/task/models/es_MX-claude-high.onnx'
     },
     logRetention: logs.RetentionDays.ONE_WEEK,
     description: 'Piper TTS voice synthesis with Lambda Response Streaming',
@@ -30,7 +30,7 @@ export function voiceSynthesisStack(backend: any) {
 
   const voiceSynthesisFunctionUrl = voiceSynthesisFunction.addFunctionUrl({
     authType: lambda.FunctionUrlAuthType.NONE,
-    invokeMode: lambda.InvokeMode.RESPONSE_STREAM,
+    invokeMode: lambda.InvokeMode.BUFFERED,
     cors: {
       allowedOrigins: ['*'],
       allowedMethods: [lambda.HttpMethod.ALL],

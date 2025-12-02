@@ -1,4 +1,3 @@
 awslambdaric
 boto3
 piper-tts
-onnxruntime

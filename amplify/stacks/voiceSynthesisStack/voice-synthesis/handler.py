@@ -2,18 +2,25 @@ import json
 import os
 import io
 import wave
+import base64
 from typing import Iterator
 import logging
-import onnxruntime as ort
+import sys
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, stream=sys.stdout, force=True)
 logger = logging.getLogger(__name__)
 
-ort.set_default_logger_severity(4)
+os.environ['ORT_LOGGING_LEVEL'] = '4'
+os.environ['ONNXRUNTIME_LOG_SEVERITY_LEVEL'] = '4'
 
-from piper.voice import PiperVoice
+try:
+    from piper import PiperVoice
+    logger.info("Piper module imported successfully")
+except Exception as e:
+    logger.error(f"Error importing piper: {e}")
+    raise
 
-MODEL_PATH = os.environ.get('MODEL_PATH', '/var/task/models/es_ES-davefx-medium.onnx')
+MODEL_PATH = os.environ.get('MODEL_PATH', '/var/task/models/es_MX-claude-high.onnx')
 
 voice = None
 
@@ -22,11 +29,8 @@ def get_voice():
     if voice is None:
         logger.info(f"Loading Piper voice model from {MODEL_PATH}")
         try:
-            sess_options = ort.SessionOptions()
-            sess_options.log_severity_level = 4
-            
-            voice = PiperVoice.load(MODEL_PATH, use_cuda=False)
-            logger.info("Voice model loaded successfully")
+            voice = PiperVoice.load(MODEL_PATH)
+            logger.info(f"Voice model loaded successfully. Sample rate: {voice.config.sample_rate}")
         except Exception as e:
             logger.error(f"Failed to load voice model: {e}")
             import traceback
@@ -34,47 +38,53 @@ def get_voice():
             raise
     return voice
 
-def create_wav_header(sample_rate: int, bits_per_sample: int, channels: int) -> bytes:
+def generate_complete_wav(text: str, speed: float = 1.0) -> bytes:
+    piper_voice = get_voice()
+    
+    audio_chunks = []
+    sample_rate = None
+    sample_width = None
+    channels = None
+    
+    logger.info(f"Starting synthesis for text: {text[:50]}...")
+    
+    for chunk in piper_voice.synthesize(text):
+        if sample_rate is None:
+            sample_rate = chunk.sample_rate
+            sample_width = chunk.sample_width
+            channels = chunk.sample_channels
+            logger.info(f"Audio format: {sample_rate}Hz, {sample_width} bytes, {channels} channels")
+        
+        audio_chunks.append(chunk.audio_int16_bytes)
+    
+    audio_data = b''.join(audio_chunks)
+    logger.info(f"Total audio data: {len(audio_data)} bytes")
+    
     buffer = io.BytesIO()
     with wave.open(buffer, 'wb') as wav_file:
         wav_file.setnchannels(channels)
-        wav_file.setsampwidth(bits_per_sample // 8)
+        wav_file.setsampwidth(sample_width)
         wav_file.setframerate(sample_rate)
-        wav_file.writeframes(b'')
+        wav_file.writeframes(audio_data)
     
     buffer.seek(0)
-    return buffer.read()
-
-def generate_audio_chunks(text: str, speed: float = 1.0) -> Iterator[bytes]:
-    piper_voice = get_voice()
+    wav_bytes = buffer.read()
+    logger.info(f"Complete WAV file: {len(wav_bytes)} bytes")
     
-    sample_rate = piper_voice.config.sample_rate
+    # Verify WAV header
+    if wav_bytes[:4] == b'RIFF' and wav_bytes[8:12] == b'WAVE':
+        logger.info("WAV header verified successfully")
+    else:
+        logger.error(f"Invalid WAV header! First 12 bytes: {wav_bytes[:12]}")
     
-    wav_header = create_wav_header(sample_rate, 16, 1)
-    yield wav_header
-    
-    length_scale = 1.0 / speed
-    
-    audio_stream = piper_voice.synthesize_stream_raw(
-        text,
-        length_scale=length_scale
-    )
-    
-    chunk_size = 4096
-    buffer = bytearray()
-    
-    for audio_bytes in audio_stream:
-        buffer.extend(audio_bytes)
-        
-        while len(buffer) >= chunk_size:
-            yield bytes(buffer[:chunk_size])
-            buffer = buffer[chunk_size:]
-    
-    if buffer:
-        yield bytes(buffer)
+    return wav_bytes
 
 def lambda_handler(event, context):
     try:
+        logger.info(f"Lambda handler invoked with event keys: {event.keys()}")
+        logger.info(f"Request context: {event.get('requestContext', {})}")
+        
+        # Parse request body
         if 'body' in event:
             body = json.loads(event['body']) if isinstance(event['body'], str) else event['body']
         else:
@@ -84,41 +94,42 @@ def lambda_handler(event, context):
         speed = float(body.get('speed', 1.0))
         
         if not text:
+            logger.error("Missing text parameter")
             return {
                 'statusCode': 400,
+                'headers': {'Content-Type': 'application/json'},
                 'body': json.dumps({'error': 'Missing text parameter'})
             }
         
-        print(f"Generating audio for text: {text[:50]}... (speed: {speed})")
+        logger.info(f"Generating audio for text: {text[:50]}... (speed: {speed})")
         
-        response_stream = context.response_stream if hasattr(context, 'response_stream') else None
+        # Generate complete WAV file
+        wav_data = generate_complete_wav(text, speed)
         
-        if response_stream:
-            response_stream.set_content_type('audio/wav')
-            
-            for chunk in generate_audio_chunks(text, speed):
-                response_stream.write(chunk)
-            
-            response_stream.end()
-        else:
-            audio_chunks = list(generate_audio_chunks(text, speed))
-            audio_data = b''.join(audio_chunks)
-            
-            return {
-                'statusCode': 200,
-                'headers': {
-                    'Content-Type': 'audio/wav',
-                    'Content-Length': str(len(audio_data))
-                },
-                'body': audio_data.hex(),
-                'isBase64Encoded': False
-            }
+        # Return as base64-encoded binary response
+        logger.info(f"Returning {len(wav_data)} bytes as base64-encoded response")
+        
+        return {
+            'statusCode': 200,
+            'headers': {
+                'Content-Type': 'application/json'
+            },
+            'body': json.dumps({
+                'audioData': base64.b64encode(wav_data).decode('utf-8'),
+                'contentType': 'audio/wav',
+                'size': len(wav_data)
+            })
+        }
     
     except Exception as e:
-        print(f"Error: {str(e)}")
+        logger.error(f"Error in lambda_handler: {str(e)}")
         import traceback
         traceback.print_exc()
+        
         return {
             'statusCode': 500,
+            'headers': {
+                'Content-Type': 'application/json'
+            },
             'body': json.dumps({'error': str(e)})
         }
